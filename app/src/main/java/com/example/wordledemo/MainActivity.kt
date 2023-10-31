@@ -45,6 +45,12 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
     // list of colors
     var colors by remember { mutableStateOf(List(lettersInWord * numberOfRows) { Color.Black }) }
 
+    // list of characters
+    var keyboardCharacters by remember { mutableStateOf("QWERTYUIOPASDFGHJKLZXCVBNM") }
+
+    // list of colors
+    var keyboardColors by remember { mutableStateOf(List(24) { Color.LightGray }) }
+
     // next character placement position
     var currentChar by remember { mutableStateOf(0)}
 
@@ -83,27 +89,28 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
             }
         }
 
+        // Keyboard
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
             Row {
-                val letters = "QWERTYUIOP"
-                for (c:Char in letters) {
+                for (c in 0..9) {
                     Button(
                         onClick = {
                             if (currentChar <= maxIndex) {
-                                characters = addCharacter(characters, c, currentChar)
-                                colors = addColor(colors, winningWord, c, currentChar)
+                                characters = addCharacter(characters, keyboardCharacters[c], currentChar)
+                                //colors = Color(colors, winningWord, keyboardCharacters[c], currentChar)
                                 currentChar++
                             }
                         },
                         modifier = Modifier
                             .width(32.dp) // Set a smaller width for the buttons
                             .padding(horizontal = 2.dp, vertical = 4.dp), // Reduce padding
-                        contentPadding = PaddingValues(2.dp) // Adjust the content padding
+                        contentPadding = PaddingValues(2.dp), // Adjust the content padding
+                        colors = ButtonDefaults.buttonColors(keyboardColors[c])
                     ) {
-                        Text(text = c.toString(), fontSize = 10.sp) // Set a smaller font size for the text
+                        Text(text = keyboardCharacters[c].toString(), fontSize = 10.sp) // Set a smaller font size for the text
                     }
                 }
             }
@@ -114,22 +121,22 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
             contentAlignment = Alignment.Center
         ) {
             Row {
-                val letters = "ASDFGHJKL"
-                for (c:Char in letters) {
+                for (c in 10..18) {
                     Button(
                         onClick = {
                             if (currentChar <= maxIndex) {
-                                characters = addCharacter(characters, c, currentChar)
-                                colors = addColor(colors, winningWord, c, currentChar)
+                                characters = addCharacter(characters, keyboardCharacters[c], currentChar)
+                                //colors = addColor(colors, winningWord, keyboardCharacters[c], currentChar)
                                 currentChar++
                             }
                         },
                         modifier = Modifier
                             .width(32.dp) // Set a smaller width for the buttons
                             .padding(horizontal = 2.dp, vertical = 4.dp), // Reduce padding
-                        contentPadding = PaddingValues(2.dp) // Adjust the content padding
+                        contentPadding = PaddingValues(2.dp), // Adjust the content padding
+                        colors = ButtonDefaults.buttonColors(keyboardColors[c])
                     ) {
-                        Text(text = c.toString(), fontSize = 10.sp) // Set a smaller font size for the text
+                        Text(text = keyboardCharacters[c].toString(), fontSize = 10.sp) // Set a smaller font size for the text
                     }
                 }
             }
@@ -140,11 +147,11 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
             contentAlignment = Alignment.Center
         ) {
             Row {
-                val letters = "ZXCVBNM"
                 Button(
                     onClick = {
-                        println("currentChar ${currentChar}, maxIndex ${maxIndex}")
                         if (currentChar == maxIndex + 1 && maxIndex != numberOfRows * lettersInWord - 1) {
+                            keyboardColors = updateKeyboardColors(keyboardColors, characters, maxIndex, minIndex, winningWord)
+                            colors = setGridColors(colors, winningWord, maxIndex, minIndex, characters)
                             maxIndex += 5
                             minIndex += 5
                         }
@@ -152,25 +159,27 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
                     modifier = Modifier
                         .width(32.dp) // Set a smaller width for the buttons
                         .padding(horizontal = 2.dp, vertical = 4.dp), // Reduce padding
-                    contentPadding = PaddingValues(2.dp) // Adjust the content padding
+                    contentPadding = PaddingValues(2.dp), // Adjust the content padding
+                    colors = ButtonDefaults.buttonColors(Color.LightGray)
                 ) {
                     Text(text = "sub", fontSize = 10.sp) // Set a smaller font size for the text
                 }
-                for (c:Char in letters) {
+                for (c in 19..23) {
                     Button(
                         onClick = {
                             if (currentChar <= maxIndex) {
-                                characters = addCharacter(characters, c, currentChar)
-                                colors = addColor(colors, winningWord, c, currentChar)
+                                characters = addCharacter(characters, keyboardCharacters[c], currentChar)
+                                //colors = addColor(colors, winningWord, keyboardCharacters[c], currentChar)
                                 currentChar++
                             }
                         },
                         modifier = Modifier
                             .width(32.dp) // Set a smaller width for the buttons
                             .padding(horizontal = 2.dp, vertical = 4.dp), // Reduce padding
-                        contentPadding = PaddingValues(2.dp) // Adjust the content padding
+                        contentPadding = PaddingValues(2.dp), // Adjust the content padding
+                        colors = ButtonDefaults.buttonColors(keyboardColors[c])
                     ) {
-                        Text(text = c.toString(), fontSize = 10.sp) // Set a smaller font size for the text
+                        Text(text = keyboardCharacters[c].toString(), fontSize = 10.sp) // Set a smaller font size for the text
                     }
                 }
                 Button(
@@ -184,13 +193,49 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
                     modifier = Modifier
                         .width(32.dp) // Set a smaller width for the buttons
                         .padding(horizontal = 2.dp, vertical = 4.dp), // Reduce padding
-                    contentPadding = PaddingValues(2.dp) // Adjust the content padding
+                    contentPadding = PaddingValues(2.dp), // Adjust the content padding
+                    colors = ButtonDefaults.buttonColors(Color.LightGray)
                 ) {
                     Text(text = "del", fontSize = 10.sp) // Set a smaller font size for the text
                 }
             }
         }
     }
+}
+
+fun setGridColors(
+    keyboardColors: List<Color>,
+    winningWord: String,
+    maxIndex: Int,
+    minIndex: Int,
+    characters: String
+): List<Color> {
+    val updatedColors = keyboardColors.toMutableList()
+    val characters = characters.toList()
+
+    for (i in minIndex..maxIndex) {
+        if (winningWord.contains(characters[i])) {
+            updatedColors[i] = Color.Yellow
+        } else {
+            updatedColors[i] = Color.DarkGray
+        }
+    }
+
+    return updatedColors
+}
+
+fun updateKeyboardColors(keyboardColors: List<Color>, characters: String, maxIndex: Int, minIndex: Int, winningWord: String): List<Color> {
+    val updatedColors = keyboardColors.toMutableList()
+
+    for (i in minIndex..maxIndex) {
+        val str = "QWERTYUIOPASDFGHJKLZXCVBNM"
+        if (winningWord.contains(characters[i])) {
+            updatedColors[str.indexOf(characters[i])] = Color.Yellow
+        } else {
+            updatedColors[str.indexOf(characters[i])] = Color.DarkGray
+        }
+    }
+    return updatedColors
 }
 
 fun deleteCharacter(characters: String, index: Int): String {
