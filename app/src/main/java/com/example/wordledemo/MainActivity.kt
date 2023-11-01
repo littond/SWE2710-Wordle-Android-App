@@ -17,9 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import Wordle
+import android.os.Build
+import androidx.annotation.RequiresApi
 
 class MainActivity : ComponentActivity() {
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -27,7 +31,7 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 color = Color.Black
             ) {
-                CharacterGrid(5, 6)
+                CharacterGrid(5, 6, Wordle("data/vocab.txt"))
             }
 
 
@@ -36,9 +40,10 @@ class MainActivity : ComponentActivity() {
 }
 
 
+@RequiresApi(Build.VERSION_CODES.N)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
+fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
     // list of characters
     var characters by remember { mutableStateOf(" ".repeat(lettersInWord * numberOfRows)) }
 
@@ -55,7 +60,7 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
     var currentChar by remember { mutableStateOf(0)}
 
     // reference word thing
-    var winningWord by remember { mutableStateOf("HELLO") }
+    var winningWord by remember { mutableStateOf(wordle.word) }
 
     var maxIndex by remember { mutableStateOf(4) }
     var minIndex by remember { mutableStateOf(0) }
@@ -149,9 +154,12 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
             Row {
                 Button(
                     onClick = {
-                        if (currentChar == maxIndex + 1 && maxIndex != numberOfRows * lettersInWord - 1) {
-                            keyboardColors = updateKeyboardColors(keyboardColors, characters, maxIndex, minIndex, winningWord)
-                            colors = setGridColors(colors, winningWord, maxIndex, minIndex, characters)
+                        if (currentChar == maxIndex + 1 && maxIndex != numberOfRows * lettersInWord - 1 && winningWord != null) {
+                            keyboardColors = updateKeyboardColors(keyboardColors, characters, maxIndex, minIndex,
+                                winningWord!!, wordle
+                            )
+                            colors = setGridColors(colors,
+                                winningWord!!, maxIndex, minIndex, characters)
                             maxIndex += 5
                             minIndex += 5
                         }
@@ -224,16 +232,28 @@ fun setGridColors(
     return updatedColors
 }
 
-fun updateKeyboardColors(keyboardColors: List<Color>, characters: String, maxIndex: Int, minIndex: Int, winningWord: String): List<Color> {
+//--------------------------------------------------------------------------------------------------
+@RequiresApi(Build.VERSION_CODES.N)
+fun updateKeyboardColors(keyboardColors: List<Color>, characters: String, maxIndex: Int, minIndex: Int, winningWord: String, wordle: Wordle): List<Color> {
+    val valArr = wordle.validateLetter(winningWord)
+    val str = "QWERTYUIOPASDFGHJKLZXCVBNM"
     val updatedColors = keyboardColors.toMutableList()
 
-    for (i in minIndex..maxIndex) {
-        val str = "QWERTYUIOPASDFGHJKLZXCVBNM"
-        if (winningWord.contains(characters[i])) {
-            updatedColors[str.indexOf(characters[i])] = Color.Yellow
+    var colors = mutableListOf<Color>()
+    for (i in valArr.indices) {
+        if (valArr[i] == 1) {
+            colors.add(Color.Green)
+        } else if (valArr[i] == 2) {
+            colors.add(Color.Yellow)
+        } else if (valArr[i] == 3) {
+            colors.add(Color.DarkGray)
         } else {
-            updatedColors[str.indexOf(characters[i])] = Color.DarkGray
+            colors.add(Color.Red)
         }
+    }
+
+    for (i in minIndex..maxIndex) {
+        updatedColors[str.indexOf(characters[i])] = colors[i-minIndex]
     }
     return updatedColors
 }

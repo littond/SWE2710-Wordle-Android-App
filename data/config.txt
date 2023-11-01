@@ -1,0 +1,1 @@
+VocabPATH="data/vocab/wordle-official.txt"
