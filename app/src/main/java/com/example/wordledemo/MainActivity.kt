@@ -17,9 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import Wordle
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.ui.unit.min
 
 class MainActivity : ComponentActivity() {
 
@@ -31,7 +31,7 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 color = Color.Black
             ) {
-                CharacterGrid(5, 6, Wordle("data/vocab.txt"))
+                CharacterGrid(5, 6)
             }
 
 
@@ -43,7 +43,8 @@ class MainActivity : ComponentActivity() {
 @RequiresApi(Build.VERSION_CODES.N)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
+fun CharacterGrid(lettersInWord: Int, numberOfRows: Int) {
+    //test()
     // list of characters
     var characters by remember { mutableStateOf(" ".repeat(lettersInWord * numberOfRows)) }
 
@@ -54,16 +55,17 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
     var keyboardCharacters by remember { mutableStateOf("QWERTYUIOPASDFGHJKLZXCVBNM") }
 
     // list of colors
-    var keyboardColors by remember { mutableStateOf(List(24) { Color.LightGray }) }
+    var keyboardColors by remember { mutableStateOf(List(26) { Color.LightGray }) }
 
     // next character placement position
     var currentChar by remember { mutableStateOf(0)}
 
     // reference word thing
-    var winningWord by remember { mutableStateOf(wordle.word) }
+    val winningWord by remember { mutableStateOf("DOING") }
 
     var maxIndex by remember { mutableStateOf(4) }
     var minIndex by remember { mutableStateOf(0) }
+
 
     // Grid Generation
     Column(
@@ -105,7 +107,6 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
                         onClick = {
                             if (currentChar <= maxIndex) {
                                 characters = addCharacter(characters, keyboardCharacters[c], currentChar)
-                                //colors = Color(colors, winningWord, keyboardCharacters[c], currentChar)
                                 currentChar++
                             }
                         },
@@ -117,6 +118,7 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
                     ) {
                         Text(text = keyboardCharacters[c].toString(), fontSize = 10.sp) // Set a smaller font size for the text
                     }
+                    // keyboardCharacters[c].toString()
                 }
             }
         }
@@ -131,7 +133,6 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
                         onClick = {
                             if (currentChar <= maxIndex) {
                                 characters = addCharacter(characters, keyboardCharacters[c], currentChar)
-                                //colors = addColor(colors, winningWord, keyboardCharacters[c], currentChar)
                                 currentChar++
                             }
                         },
@@ -154,12 +155,10 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
             Row {
                 Button(
                     onClick = {
-                        if (currentChar == maxIndex + 1 && maxIndex != numberOfRows * lettersInWord - 1 && winningWord != null) {
-                            keyboardColors = updateKeyboardColors(keyboardColors, characters, maxIndex, minIndex,
-                                winningWord!!, wordle
-                            )
-                            colors = setGridColors(colors,
-                                winningWord!!, maxIndex, minIndex, characters)
+                        if (currentChar == maxIndex + 1 && maxIndex != numberOfRows * lettersInWord - 1) {
+                            var guess = getGuess(characters, minIndex, maxIndex)
+                            keyboardColors = updateKeyboardColors(keyboardColors, guess, winningWord)
+                            colors = setGridColors(colors, winningWord, maxIndex, minIndex, guess)
                             maxIndex += 5
                             minIndex += 5
                         }
@@ -172,12 +171,11 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
                 ) {
                     Text(text = "sub", fontSize = 10.sp) // Set a smaller font size for the text
                 }
-                for (c in 19..23) {
+                for (c in 19..25) {
                     Button(
                         onClick = {
                             if (currentChar <= maxIndex) {
                                 characters = addCharacter(characters, keyboardCharacters[c], currentChar)
-                                //colors = addColor(colors, winningWord, keyboardCharacters[c], currentChar)
                                 currentChar++
                             }
                         },
@@ -211,21 +209,16 @@ fun CharacterGrid(lettersInWord: Int, numberOfRows: Int, wordle: Wordle) {
     }
 }
 
-fun setGridColors(
-    keyboardColors: List<Color>,
-    winningWord: String,
-    maxIndex: Int,
-    minIndex: Int,
-    characters: String
-): List<Color> {
-    val updatedColors = keyboardColors.toMutableList()
-    val characters = characters.toList()
+fun setGridColors(colors: List<Color>, winningWord: String, maxIndex: Int, minIndex: Int, guess: String): List<Color> {
+    val valArr = validateWord(winningWord, guess)
+    val updatedColors = colors.toMutableList()
 
     for (i in minIndex..maxIndex) {
-        if (winningWord.contains(characters[i])) {
-            updatedColors[i] = Color.Yellow
-        } else {
-            updatedColors[i] = Color.DarkGray
+        when (valArr[i-minIndex]) {
+            1 -> updatedColors[i] = Color(32, 111, 17)
+            2 -> updatedColors[i] = Color(218, 218, 93)
+            3 -> updatedColors[i] = Color.DarkGray
+            else -> updatedColors[i] = Color.Red
         }
     }
 
@@ -234,28 +227,29 @@ fun setGridColors(
 
 //--------------------------------------------------------------------------------------------------
 @RequiresApi(Build.VERSION_CODES.N)
-fun updateKeyboardColors(keyboardColors: List<Color>, characters: String, maxIndex: Int, minIndex: Int, winningWord: String, wordle: Wordle): List<Color> {
-    val valArr = wordle.validateLetter(winningWord)
-    val str = "QWERTYUIOPASDFGHJKLZXCVBNM"
-    val updatedColors = keyboardColors.toMutableList()
+fun updateKeyboardColors(keyboardColors: List<Color>, guess: String, winningWord: String): List<Color> {
+    val valArr = validateWord(winningWord, guess)
+    val keyboardChar = "QWERTYUIOPASDFGHJKLZXCVBNM"
 
-    var colors = mutableListOf<Color>()
-    for (i in valArr.indices) {
-        if (valArr[i] == 1) {
-            colors.add(Color.Green)
-        } else if (valArr[i] == 2) {
-            colors.add(Color.Yellow)
-        } else if (valArr[i] == 3) {
-            colors.add(Color.DarkGray)
-        } else {
-            colors.add(Color.Red)
+    val updatedColors = keyboardColors.toMutableList()
+    for (i in 0 until 5) {
+        val index = keyboardChar.indexOf(guess[i])
+        when (valArr[i]) {
+            1 -> updatedColors[index] = Color(32, 111, 17)
+            2 -> updatedColors[index] = Color(218, 218, 93)
+            3 -> updatedColors[index] = Color.DarkGray
+            else -> updatedColors[index] = Color.Red
         }
     }
+    return updatedColors.toList()
+}
 
+fun getGuess(characters: String, minIndex: Int, maxIndex: Int): String {
+    var word = ""
     for (i in minIndex..maxIndex) {
-        updatedColors[str.indexOf(characters[i])] = colors[i-minIndex]
+        word += characters[i]
     }
-    return updatedColors
+    return word
 }
 
 fun deleteCharacter(characters: String, index: Int): String {
@@ -286,14 +280,22 @@ fun addCharacter(characters: String, character: Char, index: Int): String {
     return cells.toCharArray().joinToString(separator = "") { it.toString() }
 }
 
-fun addColor(colors: List<Color>, winningWord: String, character: Char, index: Int): List<Color> {
-    val updatedColors = colors.toMutableList()
+// ------------------ Wordle methods ---------------
 
-    if (winningWord.contains(character)) {
-        updatedColors[index] = Color.Yellow
-    } else {
-        updatedColors[index] = Color.Red
+
+fun validateWord(winningWord: String, guessedWord: String): IntArray {
+    if (winningWord.equals(guessedWord)) {
+        return IntArray(5) {1}
     }
-
-    return updatedColors
+    val intArr = IntArray(5)
+    for (i in winningWord.indices) {
+        if (winningWord[i] == guessedWord[i]) {
+            intArr[i] = 1
+        } else if (winningWord.contains(guessedWord[i])) {
+            intArr[i] = 2
+        } else {
+            intArr[i] = 3
+        }
+    }
+    return intArr
 }
